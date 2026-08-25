@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# ForenSight generated artefacts
+sample_data/*.dd
+sample_data/*.img
+evidence_usb.dd
+# Case workspaces are created wherever the examiner chooses; never commit them.
+*.db
+Reports/
+Logs/
+
+# Large / regenerable binaries (not for version control)
+*.keras
+forensight/models/
+
+# Secrets — never commit credentials
+kaggle.json
+**/kaggle.json
+*.pem
+*.key
