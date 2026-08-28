@@ -1,7 +1,7 @@
 """Premium light forensic-workstation theme.
 
 Warm off-white workspace (not pure white), a dark charcoal top chrome for
-contrast, and a restrained muted-emerald accent (no bright blue).
+contrast, and a deep navy-blue accent that matches the ForenSight logo.
 """
 
 from pathlib import Path
@@ -36,10 +36,11 @@ from . import tree_assets
 _LINES = tree_assets.ensure_line_assets()   # classic dotted branch images
 
 # -- palette ---------------------------------------------------------------
-ACCENT = "#2E6B57"          # muted emerald - primary actions, active states
-ACCENT_LIGHT = "#35806C"    # hover
-ACCENT_SOFT = "#DCEAE4"     # soft emerald tint - selections
-ACCENT_HOVER_BG = "#EAF1EE"
+ACCENT = "#33383F"          # dark slate-grey - content primary actions (mono)
+ACCENT_LIGHT = "#434952"    # hover
+ACCENT_SOFT = "#E4E5E8"     # light grey - selections
+ACCENT_HOVER_BG = "#EDEEEF"
+ON_CHROME = "#4A90C2"       # nav bar KEEPS its blue active-tab indicator
 
 CHROME = "#23272C"          # dark charcoal top bar
 CHROME_LIGHT = "#2E3339"    # nav bar
@@ -55,9 +56,11 @@ MUTED = "#6E7681"
 HEADER_BG = "#ECE8E1"       # table header (subtle warm grey)
 HEADER_TEXT = "#454B53"
 
-OK = "#2E7D5B"
-WARN = "#B5771F"
-DANGER = "#B23A34"
+OK = "#1E7048"              # darker green - readable as filename/assessment text
+WARN = "#946010"            # darker amber
+DANGER = "#8F3E39"          # darker brick red - Close / destructive / strong
+GREEN = "#3F7359"           # muted green - "New Case" call-to-action
+GREEN_HOVER = "#487F62"
 DISABLED_BG = "#D6D2CA"
 DISABLED_TEXT = "#F2F0EB"
 
@@ -89,7 +92,7 @@ QPushButton#TopNavButton {{
 QPushButton#TopNavButton:hover {{ background: {CHROME_HOVER}; color: #FFFFFF; }}
 QPushButton#TopNavButton:checked {{
     background: transparent; color: #FFFFFF; font-weight: 700;
-    border-bottom: 3px solid {ACCENT};
+    border-bottom: 3px solid {ON_CHROME};
 }}
 
 /* Welcome / legacy sidebar (dark chrome) */
@@ -120,8 +123,26 @@ QPushButton:disabled {{ background: {DISABLED_BG}; color: {DISABLED_TEXT}; }}
 QPushButton#Secondary {{ background: {PANEL}; color: {ACCENT}; border: 1px solid {ACCENT}; }}
 QPushButton#Secondary:hover {{ background: {ACCENT_HOVER_BG}; }}
 QPushButton#Secondary:disabled {{ background: {PANEL}; color: {MUTED}; border: 1px solid {BORDER}; }}
-QPushButton#Danger {{ background: {DANGER}; }}
-QPushButton#Danger:hover {{ background: #C64A43; }}
+/* Colored action buttons are SOLID fills so the primary commands attention. */
+QPushButton#Danger {{ background: {DANGER}; color: #FFFFFF; border: none; }}
+QPushButton#Danger:hover {{ background: #8F4139; }}
+QPushButton#NewCase {{ background: {GREEN}; color: #FFFFFF; border: none; }}
+QPushButton#NewCase:hover {{ background: {GREEN_HOVER}; }}
+
+/* Evidence toolbar buttons */
+QPushButton#AddSource {{ background: {GREEN}; color: #FFFFFF; border: none; }}
+QPushButton#AddSource:hover {{ background: {GREEN_HOVER}; }}
+QPushButton#ToolbarSecondary {{
+    background: #F8F9FA; color: #1E2A38; border: 1px solid #CBD5E1;
+}}
+QPushButton#ToolbarSecondary:hover {{ background: #EEF1F4; border-color: #94A3B8; }}
+QPushButton#BookmarkBtn {{
+    background: #FFFFFF; color: #8A6D1F; border: 1px solid #E0B94A;
+}}
+QPushButton#BookmarkBtn:hover {{ background: #FCF6E0; border-color: #D2A932; }}
+QPushButton#BookmarkBtn:disabled {{
+    background: #F8F9FA; color: #B7B2A3; border: 1px solid #E4E0D8;
+}}
 
 /* Inputs */
 QLineEdit, QComboBox, QSpinBox, QTextEdit, QPlainTextEdit {{
@@ -138,15 +159,15 @@ QComboBox::drop-down {{
 QComboBox::down-arrow {{ image: url({_ARROW_URL}); width: 11px; height: 11px; }}
 QComboBox::down-arrow:on {{ top: 1px; }}
 
-/* Tables */
+/* Tables - white ground with clearer row banding (avoids a washed-out look) */
 QTableWidget, QTableView {{
-    background: {PANEL}; border: 1px solid {BORDER}; border-radius: 8px;
-    gridline-color: {BORDER}; selection-background-color: {ACCENT_SOFT};
-    selection-color: {TEXT}; alternate-background-color: {PANEL_ALT};
+    background: #FFFFFF; border: 1px solid #CBD1D9; border-radius: 8px;
+    gridline-color: #E4E7EC; selection-background-color: {ACCENT_SOFT};
+    selection-color: {TEXT}; alternate-background-color: #F2F4F7;
 }}
 QHeaderView::section {{
-    background: {HEADER_BG}; color: {HEADER_TEXT}; padding: 7px 6px; border: none;
-    border-bottom: 1px solid {BORDER}; font-weight: 700;
+    background: #E9ECF1; color: #3C4046; padding: 7px 6px; border: none;
+    border-bottom: 1px solid #CBD1D9; font-weight: 700;
 }}
 QTableWidget::item {{ padding: 4px; }}
 

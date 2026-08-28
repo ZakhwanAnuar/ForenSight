@@ -12,6 +12,34 @@ from PyQt6.QtWidgets import (QFrame, QLabel, QVBoxLayout, QHBoxLayout, QWidget,
 from . import style
 
 
+def logo_pixmap(height: int) -> Optional[QPixmap]:
+    """Return the ForenSight logo scaled to ``height`` px, or None if missing.
+
+    Resolves the asset both when running from source and when frozen by
+    PyInstaller (where bundled data lives under ``sys._MEIPASS``)."""
+    import sys
+    if getattr(sys, "frozen", False):
+        path = Path(getattr(sys, "_MEIPASS", ".")) / "forensight" / "ui" / \
+            "assets" / "logo.png"
+    else:
+        path = Path(__file__).resolve().parent / "assets" / "logo.png"
+    pm = QPixmap(str(path))
+    if pm.isNull():
+        return None
+    # Render at the display's physical resolution so the logo stays crisp on
+    # HiDPI / scaled displays (e.g. 125%/150%), then tag the device-pixel-ratio
+    # so it is laid out at the requested logical height.
+    from PyQt6.QtWidgets import QApplication
+    dpr = 1.0
+    app = QApplication.instance()
+    if app is not None and app.primaryScreen() is not None:
+        dpr = app.primaryScreen().devicePixelRatio()
+    scaled = pm.scaledToHeight(
+        max(1, round(height * dpr)), Qt.TransformationMode.SmoothTransformation)
+    scaled.setDevicePixelRatio(dpr)
+    return scaled
+
+
 def h1(text: str) -> QLabel:
     lbl = QLabel(text)
     lbl.setObjectName("H1")

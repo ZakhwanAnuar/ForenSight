@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QObject, QEvent
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
                              QFrame, QLabel, QPushButton, QStackedWidget,
                              QButtonGroup, QFileDialog, QMessageBox, QProgressDialog,
@@ -28,6 +28,21 @@ NAV_ITEMS = ["Home", "Evidence", "Timeline",
              "Chain of Custody", "Bookmarks", "Report"]
 
 
+class _OverlayFit(QObject):
+    """Keeps a dim overlay resized to fill its target widget (which may be
+    maximised or resized after the overlay is first shown)."""
+
+    def __init__(self, target, overlay):
+        super().__init__(overlay)
+        self._target = target
+        self._overlay = overlay
+
+    def eventFilter(self, obj, event):  # noqa: N802 - Qt override
+        if event.type() == QEvent.Type.Resize:
+            self._overlay.setGeometry(self._target.rect())
+        return False
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -45,11 +60,33 @@ class MainWindow(QMainWindow):
         self._update_case_controls()
 
     def show_welcome(self):
-        """Display the Autopsy-style Welcome dialog over the main window."""
+        """Display the Autopsy-style Welcome dialog over the main window.
+
+        The main window is greyed out (a translucent dim overlay) while the
+        dialog is open, so it is visually clear the user should interact with
+        the wizard, not the app behind it."""
         if self.case is not None:
             return
-        dlg = WelcomeDialog(self, self)
-        dlg.exec()
+        central = self.centralWidget()
+        overlay = QWidget(central)
+        overlay.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        overlay.setStyleSheet("background: rgba(60, 64, 72, 45);")
+        overlay.setGeometry(central.rect())
+        overlay.show()
+        overlay.raise_()
+        # Keep the overlay covering the whole window even after the window is
+        # maximised or resized while the dialog is open.
+        fit = _OverlayFit(central, overlay)
+        central.installEventFilter(fit)
+        QApplication.processEvents()
+        overlay.setGeometry(central.rect())
+        overlay.raise_()
+        try:
+            WelcomeDialog(self, self).exec()
+        finally:
+            central.removeEventFilter(fit)
+            overlay.hide()
+            overlay.deleteLater()   # restore the normal UI
 
     # -- construction -----------------------------------------------------
     def _build(self):
@@ -63,12 +100,15 @@ class MainWindow(QMainWindow):
         tb = QHBoxLayout(topbar)
         tb.setContentsMargins(0, 6, 12, 6)
         tb.setSpacing(6)
-        brand = QLabel("🛡  " + config.APP_NAME); brand.setObjectName("TopBrand")
+        brand = QLabel('<span style="color:#FFFFFF;">Foren</span>'
+                       '<span style="color:#235882;">Sight</span>')
+        brand.setObjectName("TopBrand")
         sub = QLabel("Media Forensics"); sub.setObjectName("TopBrandSub")
         tb.addWidget(brand)
         tb.addWidget(sub)
         tb.addStretch(1)
         self.new_btn = QPushButton("＋ New Case")
+        self.new_btn.setObjectName("NewCase")
         self.new_btn.clicked.connect(self.create_case_flow)
         self.open_btn = QPushButton("Open Case")
         self.open_btn.setObjectName("Secondary")
@@ -119,8 +159,12 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         self.status = self.statusBar()
         self.status.showMessage("No case open.")
-        self.nav_buttons[0].setChecked(True)
-        self.go_to(0)
+        # Land on the Evidence tab as the launch backdrop behind the Welcome
+        # dialog (the Home tab stays blank until a case is open).
+        start = NAV_ITEMS.index("Evidence")
+        self.nav_buttons[start].setChecked(True)
+        self.stack.setCurrentIndex(start)
+        self.views[start].refresh()
 
     # -- navigation -------------------------------------------------------
     def go_to(self, index: int):
@@ -250,7 +294,8 @@ class MainWindow(QMainWindow):
         self.case = case
         self._update_case_controls()
         self.refresh_all()
-        self.go_to(0)
+        # Land on the Evidence tab once a case is open (not the blank Home).
+        self.go_to(NAV_ITEMS.index("Evidence"))
         if case.read_only:
             QMessageBox.information(
                 self, "Case Opened",
@@ -417,12 +462,12 @@ class MainWindow(QMainWindow):
                 self.case, evidence_id, sha)
             self.refresh_all()
             if state == evidence_manager.MATCH:
-                QMessageBox.information(self, "Integrity Check", "✓ SHA-256 MATCH — "
+                QMessageBox.information(self, "Integrity Check", "SHA-256 MATCH — "
                                         "evidence integrity verified.")
             else:
                 QMessageBox.critical(
                     self, "Integrity Check Failed",
-                    f"⚠ EVIDENCE INTEGRITY CHECK FAILED\n\n"
+                    f"EVIDENCE INTEGRITY CHECK FAILED\n\n"
                     f"Stored SHA-256:\n{stored}\n\nCurrent SHA-256:\n{sha}")
 
         worker.finished_ok.connect(on_ok)
@@ -500,7 +545,7 @@ class MainWindow(QMainWindow):
         self.refresh_all()
         self.go_to(0)
         QMessageBox.information(
-            self, "Case Closed 🔒",
+            self, "Case Closed ",
             f"Case closed and locked as read-only.\n\n"
             f"Final report:\n{report_path}\n\nReport SHA-256:\n{report_sha}")
 

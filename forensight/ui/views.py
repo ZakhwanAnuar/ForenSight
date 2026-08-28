@@ -98,28 +98,10 @@ class HomeView(QWidget):
 
     # -- no active case ---------------------------------------------------
     def _build_welcome(self):
-        self.outer.addWidget(h1(config.APP_NAME))
-        tag = QLabel(config.APP_TAGLINE)
-        tag.setObjectName("Tagline")
-        self.outer.addWidget(tag)
-
-        btn_row = QHBoxLayout()
-        new_btn = QPushButton("＋  Create New Case")
-        new_btn.clicked.connect(self.controller.create_case_flow)
-        open_btn = QPushButton("📂  Open Existing Case")
-        open_btn.setObjectName("Secondary")
-        open_btn.clicked.connect(self.controller.open_case_flow)
-        btn_row.addWidget(new_btn)
-        btn_row.addWidget(open_btn)
-        btn_row.addStretch(1)
-        self.outer.addLayout(btn_row)
-
-        recent_panel = Panel("Recent Cases")
-        self.recent_list = QListWidget()
-        self.recent_list.itemDoubleClicked.connect(self._open_recent)
-        recent_panel.add(self.recent_list)
-        self.outer.addWidget(recent_panel, 1)
-        self._load_recent()
+        # No case open: show nothing. Case creation/opening is driven by the
+        # Welcome dialog on launch and the New Case / Open Case buttons in the
+        # top bar, so the Home tab is deliberately empty here (no duplicate).
+        self.outer.addStretch(1)
 
     def _load_recent(self):
         from .. import recent_cases
@@ -154,7 +136,7 @@ class HomeView(QWidget):
         header.addLayout(title_box)
         header.addStretch(1)
         status_kind = "danger" if case.read_only else "ok"
-        status_txt = "🔒 CLOSED (READ ONLY)" if case.read_only else "● OPEN"
+        status_txt = "CLOSED (READ ONLY)" if case.read_only else "● OPEN"
         status_lbl = QLabel(status_html(status_txt, status_kind))
         status_lbl.setStyleSheet("font-size:15px;")
         header.addWidget(status_lbl)
@@ -230,11 +212,13 @@ class EvidenceView(QWidget):
         # -- top toolbar (Autopsy-style action row) --------------------
         bar = QHBoxLayout()
         self.import_btn = QPushButton("＋ Add Data Source")
+        self.import_btn.setObjectName("AddSource")          # primary
         self.import_btn.clicked.connect(self._import)
-        self.carve_btn = QPushButton("🔍 Recover Images")
+        self.carve_btn = QPushButton("Recover Images")
+        self.carve_btn.setObjectName("ToolbarSecondary")    # secondary
         self.carve_btn.clicked.connect(self._carve)
         self.verify_btn = QPushButton("Verify Integrity")
-        self.verify_btn.setObjectName("Secondary")
+        self.verify_btn.setObjectName("ToolbarSecondary")   # normal button
         self.verify_btn.clicked.connect(self._verify)
         self.analyze_btn = QPushButton("Analyse Image")
         self.analyze_btn.setObjectName("Secondary")
@@ -248,8 +232,8 @@ class EvidenceView(QWidget):
             "Analyse every recovered image. Undecodable files return "
             "INSUFFICIENT_DATA.")
         self.analyze_all_btn.clicked.connect(self._analyze_all)
-        self.bookmark_btn = QPushButton("⭐ Bookmark")
-        self.bookmark_btn.setObjectName("Secondary")
+        self.bookmark_btn = QPushButton("Bookmark")
+        self.bookmark_btn.setObjectName("BookmarkBtn")      # yellow utility
         self.bookmark_btn.clicked.connect(self._bookmark)
         self.bookmark_btn.setEnabled(False)
         bar.addWidget(self.import_btn)
@@ -263,7 +247,13 @@ class EvidenceView(QWidget):
         self.f_search.setFixedWidth(220)
         self.f_search.textChanged.connect(self._load_table)
         bar.addWidget(self.f_search)
-        outer.addLayout(bar)
+        # Everything (toolbar + panes) lives in a container that is hidden when
+        # no case is open, so the launch backdrop behind the wizard is blank.
+        self._content = QWidget()
+        content_v = QVBoxLayout(self._content)
+        content_v.setContentsMargins(0, 0, 0, 0)
+        content_v.setSpacing(8)
+        content_v.addLayout(bar)
 
         # -- main three-pane splitter ----------------------------------
         main = QSplitter(Qt.Orientation.Horizontal)
@@ -318,7 +308,8 @@ class EvidenceView(QWidget):
 
         main.addWidget(right)
         main.setSizes([250, 760])
-        outer.addWidget(main, 1)
+        content_v.addWidget(main, 1)
+        outer.addWidget(self._content, 1)
 
     # -- detail viewer ----------------------------------------------------
     def _build_detail_tabs(self):
@@ -371,9 +362,11 @@ class EvidenceView(QWidget):
     def refresh(self):
         case = self.controller.case
         if case is None:
+            self._content.setVisible(False)   # blank backdrop when no case
             self.tree.clear()
             self.table.setRowCount(0)
             return
+        self._content.setVisible(True)
         # A closed (read-only) case blocks write actions; viewing/verifying stay.
         writable = not case.read_only
         self.import_btn.setEnabled(writable)
@@ -535,7 +528,7 @@ class EvidenceView(QWidget):
             display.append([r["id"], r["file_name"], r["file_format"],
                             r["source_offset_hex"], human_size(r["file_size_bytes"]),
                             state, alloc or "Unknown", assess,
-                            "⭐" if r["bookmarked"] else ""])
+                            "★" if r["bookmarked"] else ""])
         _fill_table(self.table, self._COLS, display)
         self._colorize_rows()
         self.table.horizontalHeader().setSectionResizeMode(
@@ -680,12 +673,12 @@ class EvidenceView(QWidget):
                         "after signing (cryptographically proven).")
                 prov_html = (f"<div style='background:#fbeaea;border:1px solid #d99;"
                              f"padding:6px 8px;border-radius:4px;margin-bottom:6px;'>"
-                             f"<b>⚠ Content Provenance (FACT):</b> {prov}<br>"
+                             f"<b>Content Provenance (FACT):</b> {prov}<br>"
                              f"<span style='font-size:11px;color:#666'>{note}</span></div>")
             elif prov and "AI-GENERATED" in prov_up:
                 prov_html = (f"<div style='background:#fbeaea;border:1px solid #d99;"
                              f"padding:6px 8px;border-radius:4px;margin-bottom:6px;'>"
-                             f"<b>⚠ Content Provenance (FACT):</b> {prov}<br>"
+                             f"<b>Content Provenance (FACT):</b> {prov}<br>"
                              f"<span style='font-size:11px;color:#666'>Metadata "
                              f"self-declares generative/AI origin (C2PA).</span></div>")
             elif prov:
@@ -901,7 +894,7 @@ class CarvingDialog(QDialog):
         outer.addWidget(cfg)
 
         ctrl = QHBoxLayout()
-        self.start_btn = QPushButton("▶  START SCAN")
+        self.start_btn = QPushButton("START SCAN")
         self.start_btn.clicked.connect(self._start)
         self.pause_btn = QPushButton("⏸ Pause"); self.pause_btn.setObjectName("Secondary")
         self.pause_btn.clicked.connect(self._pause)
@@ -1060,7 +1053,7 @@ class CarvingDialog(QDialog):
         dup = (f" {self._duplicate} were already recovered (skipped)."
                if self._duplicate else "")
         self.log.appendPlainText(
-            f"✓ Scan complete. {self._recovered} new image(s) recovered "
+            f"Scan complete. {self._recovered} new image(s) recovered "
             f"({self._suspicious} suspicious).{dup}")
         self._set_scanning(False)
         self.worker = None
@@ -1073,7 +1066,7 @@ class CarvingDialog(QDialog):
         self.controller.refresh_all()
 
     def _on_error(self, msg: str):
-        self.log.appendPlainText(f"✗ Scan error: {msg}")
+        self.log.appendPlainText(f"Scan error: {msg}")
         QMessageBox.critical(self, "Carving Error", msg)
         self._set_scanning(False)
         self.worker = None
@@ -1174,10 +1167,10 @@ class ChainView(QWidget):
             return
         res = verify_audit_chain(case.db)
         if res.valid:
-            self.result.setText(status_html("✓ Audit Chain Valid", "ok"))
+            self.result.setText(status_html("Audit Chain Valid", "ok"))
         else:
             self.result.setText(status_html(
-                f"⚠ Audit Chain Integrity Failure — Event {res.broken_event_id}: "
+                f"Audit Chain Integrity Failure — Event {res.broken_event_id}: "
                 f"{res.message}", "danger"))
 
 
@@ -1190,7 +1183,7 @@ class BookmarksView(QWidget):
         self.controller = controller
         outer = QVBoxLayout(self)
         outer.setContentsMargins(20, 20, 20, 20)
-        outer.addWidget(h1("⭐ Bookmarked Evidence"))
+        outer.addWidget(h1("Bookmarked Evidence"))
         self.table = QTableWidget()
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         outer.addWidget(self.table, 1)
@@ -1247,7 +1240,7 @@ class ReportView(QWidget):
                  "JPEG Analysis", "Bookmarks", "Timeline", "Chain of Custody",
                  "Report Integrity Hash", "Examiner Declaration"]
         for it in items:
-            checklist.add(QLabel(f"✓ {it}"))
+            checklist.add(QLabel(f"•  {it}"))
         outer.addWidget(checklist)
 
         self.info = QLabel("")

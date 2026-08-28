@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (
 
 from .. import config, filesystem
 from ..utils import sanitize_filename, utc_now_compact
-from .common import h1, h2, muted
+from .common import h1, h2, muted, logo_pixmap
 from . import style
 
 
@@ -58,11 +58,14 @@ class WelcomeDialog(QDialog):
         left.setFixedWidth(260)
         lv = QVBoxLayout(left)
         lv.setContentsMargins(24, 40, 24, 24)
-        logo = QLabel("🛡")
-        logo.setStyleSheet("font-size:72px; color:white; background:transparent;")
+        logo = QLabel(); _pm = logo_pixmap(120)
+        if _pm is not None:
+            logo.setPixmap(_pm)
+        logo.setStyleSheet("background:transparent;")
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name = QLabel(config.APP_NAME)
-        name.setStyleSheet("color:white; font-size:28px; font-weight:800; background:transparent;")
+        name = QLabel('<span style="color:#FFFFFF;">Foren</span>'
+                      '<span style="color:#235882;">Sight</span>')
+        name.setStyleSheet("font-size:30px; font-weight:800; background:transparent;")
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tag = QLabel("Image Manipulation &\nMedia Forensics")
         tag.setStyleSheet("color:#9AA1A9; font-size:12px; background:transparent;")
@@ -72,35 +75,54 @@ class WelcomeDialog(QDialog):
         lv.addWidget(name)
         lv.addWidget(tag)
         lv.addStretch(1)
-        ver = QLabel(f"Prototype • schema v{config.SCHEMA_VERSION}")
+        ver = QLabel(f"Schema v{config.SCHEMA_VERSION}")
         ver.setStyleSheet("color:#7C818A; font-size:10px; background:transparent;")
         ver.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lv.addWidget(ver)
         root.addWidget(left)
 
-        # Right: action buttons.
+        # Right: actions on top, recent-cases list on the bottom.
         right = QWidget()
         rv = QVBoxLayout(right)
-        rv.setContentsMargins(30, 30, 30, 30)
-        rv.setSpacing(14)
+        rv.setContentsMargins(18, 14, 18, 14)
+        rv.setSpacing(8)
         rv.addWidget(h2("Get Started"))
-        rv.addSpacing(6)
 
-        rv.addWidget(self._action("＋  New Case",
-                                  "Create a new forensic investigation case.",
-                                  self._new_case))
-        rv.addWidget(self._action("🕘  Open Recent Case",
-                                  "Reopen a recently used case.",
-                                  self._open_recent))
-        rv.addWidget(self._action("📂  Open Case",
-                                  "Open an existing case from disk.",
-                                  self._open_case))
-        rv.addStretch(1)
+        # -- top: New Case (primary) + Open Case, side by side --
+        new_btn = QPushButton("＋  New Case")
+        new_btn.setMinimumHeight(34)
+        new_btn.setStyleSheet(
+            f"padding:5px 14px; font-weight:700; border:none; "
+            f"border-radius:6px; background:{style.GREEN}; color:#FFFFFF;")
+        new_btn.clicked.connect(self._new_case)
+        open_btn = QPushButton("Open Case")
+        open_btn.setMinimumHeight(34)
+        open_btn.setStyleSheet(
+            "padding:5px 14px; font-weight:600; border:1px solid #CBD5E1; "
+            "border-radius:6px; background:#FFFFFF; color:#1E2A38;")
+        open_btn.clicked.connect(self._open_case)
+        brow = QHBoxLayout()
+        brow.addWidget(new_btn, 1)
+        brow.addWidget(open_btn, 1)
+        rv.addLayout(brow)
+
+        # -- bottom: recent cases (double-click to open) --
+        rv.addSpacing(4)
+        rv.addWidget(muted("Recent Cases"))
+        self.recent_list = QListWidget()
+        self.recent_list.setStyleSheet(
+            "QListWidget::item { padding: 8px 6px; } QListWidget { font-size: 12.5px; }")
+        self.recent_list.itemDoubleClicked.connect(self._open_recent_item)
+        rv.addWidget(self.recent_list, 1)
+        self._load_recent()
 
         close = QPushButton("Close")
         close.setObjectName("Secondary")
+        close.setFixedHeight(28)
+        close.setStyleSheet("padding:2px 18px;")
         close.clicked.connect(self.reject)
-        crow = QHBoxLayout(); crow.addStretch(1); crow.addWidget(close)
+        crow = QHBoxLayout(); crow.setContentsMargins(0, 2, 0, 0)
+        crow.addStretch(1); crow.addWidget(close)
         rv.addLayout(crow)
         root.addWidget(right, 1)
 
@@ -108,13 +130,22 @@ class WelcomeDialog(QDialog):
         super().showEvent(event)
         center_on_screen(self)
 
-    def _action(self, title, subtitle, handler):
-        btn = QPushButton(f"{title}\n{subtitle}")
-        btn.setMinimumHeight(64)
-        btn.setStyleSheet(
-            "text-align:left; padding:10px 16px; font-weight:600;")
-        btn.clicked.connect(handler)
-        return btn
+    def _load_recent(self):
+        from .. import recent_cases
+        self.recent_list.clear()
+        entries = recent_cases.get_recent_cases()
+        if not entries:
+            item = QListWidgetItem("No recent cases yet.")
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+            self.recent_list.addItem(item)
+            return
+        for e in entries:
+            text = (f"{e['case_name']}   ·   {e['case_id']}   "
+                    f"[{e.get('status', '?')}]\n"
+                    f"last opened {e.get('last_opened_utc', '')}")
+            item = QListWidgetItem(text)
+            item.setData(Qt.ItemDataRole.UserRole, e["case_path"])
+            self.recent_list.addItem(item)
 
     def _new_case(self):
         self.accept()
@@ -126,20 +157,12 @@ class WelcomeDialog(QDialog):
         self.accept()
         QTimer.singleShot(0, self.controller.open_case_flow)
 
-    def _open_recent(self):
-        from .. import recent_cases
-        entries = recent_cases.get_recent_cases()
-        if not entries:
-            from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.information(self, "Open Recent Case",
-                                    "No recent cases yet. Use 'Open Case' or "
-                                    "'New Case'.")
+    def _open_recent_item(self, item):
+        path = item.data(Qt.ItemDataRole.UserRole)
+        if not path:
             return
-        dlg = _RecentPicker(entries, self)
-        if dlg.exec() and dlg.selected_path:
-            path = dlg.selected_path
-            self.accept()
-            QTimer.singleShot(0, lambda: self.controller.open_case_path(path))
+        self.accept()
+        QTimer.singleShot(0, lambda: self.controller.open_case_path(path))
 
 
 class _RecentPicker(QDialog):

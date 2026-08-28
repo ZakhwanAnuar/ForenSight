@@ -101,7 +101,7 @@ class BookmarkDialog(QDialog):
         self.setWindowTitle("Bookmark Evidence")
         self.setMinimumWidth(440)
         layout = QVBoxLayout(self)
-        layout.addWidget(h2(f"⭐ Bookmark: {file_name}"))
+        layout.addWidget(h2(f"Bookmark: {file_name}"))
 
         form = QFormLayout()
         self.priority = QComboBox()

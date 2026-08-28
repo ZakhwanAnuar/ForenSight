@@ -167,10 +167,10 @@ def generate_report(case: Case, output_path: str | Path, draft: bool = False,
     story.append(cover_tbl)
     story.append(Spacer(1, 1.2 * cm))
     story.append(Paragraph(
-        "This report documents processing performed by the ForenSight research "
-        "prototype. ForenSight is a lightweight forensic analysis framework and "
-        "is not a certified forensic suite. Indicators reported here do not "
-        "constitute legal determination of authenticity.", styles["CoverCaution"]))
+        "This report documents processing performed by ForenSight, a forensic "
+        "image-recovery and provenance-analysis tool. ForenSight is not a "
+        "certified forensic suite. Indicators reported here do not constitute "
+        "legal determination of authenticity.", styles["CoverCaution"]))
     story.append(PageBreak())
 
     # -- 2/3. Case & examiner info ---------------------------------------
@@ -359,9 +359,9 @@ def generate_report(case: Case, output_path: str | Path, draft: bool = False,
         Paragraph("11. Examiner Declaration", styles["SectionH"]),
         Paragraph(
             "I declare that this report documents the automated and manual "
-            "processing performed using the ForenSight research prototype on the "
-            "evidence described above. This document does not constitute a legal "
-            "certification of authenticity.", styles["Small"]),
+            "processing performed using ForenSight on the evidence described "
+            "above. This document does not constitute a legal certification of "
+            "authenticity.", styles["Small"]),
         Spacer(1, 1.2 * cm),
         Paragraph(f"Examiner Name: {info['examiner_name']}", styles["SigLine"]),
         Paragraph(f"Examiner ID: {info['examiner_id']}", styles["SigLine"]),
