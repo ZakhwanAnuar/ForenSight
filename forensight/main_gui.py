@@ -19,12 +19,12 @@ from .ui import style
 from .ui.dialogs import CreateCaseDialog
 from .ui.wizards import WelcomeDialog, NewCaseWizard, AddDataSourceWizard
 from .ui.workers import HashWorker
-from .ui.views import (HomeView, EvidenceView, CarvingDialog,
+from .ui.views import (HomeView, EvidenceView, CarvingDialog, ELAView,
                        TimelineView, ChainView, BookmarksView, ReportView)
 
 # Navigation follows the original project: a media-manipulation analysis tool.
 # Carving lives inside the Evidence tab (opened as a console), not as its own tab.
-NAV_ITEMS = ["Home", "Evidence", "Timeline",
+NAV_ITEMS = ["Home", "Evidence", "ELA", "Timeline",
              "Chain of Custody", "Bookmarks", "Report"]
 
 
@@ -143,12 +143,13 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.home = HomeView(self)
         self.evidence = EvidenceView(self)
+        self.ela_page = ELAView(self)
         self.timeline = TimelineView(self)
         self.chain = ChainView(self)
         self.bookmarks = BookmarksView(self)
         self.report = ReportView(self)
         # Order MUST match NAV_ITEMS.
-        self.views = [self.home, self.evidence, self.timeline,
+        self.views = [self.home, self.evidence, self.ela_page, self.timeline,
                       self.chain, self.bookmarks, self.report]
         # Carving is a console dialog launched from Evidence (not a nav tab).
         self.carving = CarvingDialog(self)

@@ -423,7 +423,7 @@ def _append_analysis_visuals(story, case: Case, styles):
                c.sha256_hash, c.source_offset_hex, c.allocation_status,
                a.jpeg_quality_estimate,
                a.jpeg_quantization_summary, a.assessment, a.manipulation_score,
-               a.thumbnail_path, a.provenance, a.ml_ai_probability
+               a.thumbnail_path, a.provenance
           FROM carved_evidence c
           JOIN image_analysis a ON a.carved_evidence_id = c.id
          ORDER BY c.id
@@ -493,9 +493,6 @@ def _analysis_card(row, db, styles):
 
     exif = db.get_exif(row["id"])
     provenance = row["provenance"] if "provenance" in row.keys() else None
-    # ML classifier row intentionally omitted: it is experimental and unreliable
-    # (can mislabel real/edited photos as AI) and is excluded from the score, so
-    # it is not reported. Re-enable once a better-generalising model is trained.
     content.append(_kv_table([
         ("Content Provenance", provenance or "None detected"),
         ("JPEG Quality", row["jpeg_quality_estimate"] if row["jpeg_quality_estimate"]

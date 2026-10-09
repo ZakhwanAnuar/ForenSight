@@ -43,11 +43,15 @@ In response, an industry coalition (Adobe, Microsoft, Google, the BBC, camera ma
 
 ### 1.2 Problem Statement
 
-Existing practice leaves three gaps that this project addresses together:
+Consider a routine but realistic scenario. An investigator recovers a JPEG from the unallocated space of a suspect's drive and must answer three questions before it can stand as evidence: *Where did these bytes physically come from, and can that be reproduced? Is the image an authentic capture, an edit, or an AI-generated fabrication, and on what defensible basis? And can every step of its handling be shown, in court, to be untampered?* Today, answering these three questions requires three different tools, two of which give answers an examiner cannot fully defend under cross-examination. That is the problem this project addresses.
 
-1. **Fragmented tooling.** Image recovery, image-authenticity analysis and chain-of-custody management are typically handled by separate tools. Investigators must move evidence between them, which is slow and creates opportunities for evidential error.
-2. **Opaque manipulation detection.** Many manipulation-detection tools rely on machine-learning classifiers that output a probability with no explanation. Such outputs are difficult to defend in court, where an examiner must be able to explain *why* an image was flagged.
-3. **Detection without verification.** Tools that read provenance metadata usually only *detect its presence*. They do not *cryptographically verify* the signature, so they cannot distinguish a genuine, unbroken credential from one that has been copied onto another image, altered, or forged.
+More precisely, existing practice leaves three gaps that must be closed *together*, because closing any one without the others still leaves the evidence contestable:
+
+1. **Fragmented tooling.** Image recovery, image-authenticity analysis and chain-of-custody management are typically handled by separate tools. Investigators must move evidence between them, which is slow and, more importantly, breaks the continuity of custody at exactly the moments an opposing counsel will probe.
+2. **Opaque manipulation detection.** Many manipulation-detection tools rely on machine-learning classifiers that output a probability with no explanation. Such outputs are difficult to defend in court, where an examiner must be able to explain *why* an image was flagged; "the model was 87% confident" is not a defensible basis for a legal finding.
+3. **Detection without verification.** Tools that read provenance metadata usually only *detect its presence*. They do not *cryptographically verify* the signature, so they cannot distinguish a genuine, unbroken credential from one that has been copied onto another image, altered, or forged — the precise cases in which the metadata matters most.
+
+The consequence of these gaps is concrete and serious: image evidence that could have been recovered, authenticated and defended is instead weakened or excluded, not because the underlying technology does not exist, but because it has never been integrated into a single workflow in which every verdict is explainable and every action is tamper-evident. The problem, then, is not the invention of new detection algorithms; it is the integration of proven, standards-based techniques into one transparent, evidentially sound pipeline. This is a software-engineering and forensic-soundness problem, and it is the one ForenSight sets out to solve.
 
 ### 1.3 Aim
 
@@ -61,7 +65,7 @@ To design and implement an integrated, transparent digital-forensic desktop tool
 
 ### 1.5 Scope
 
-ForenSight is a single-user desktop application for Windows. It processes raw disk images (`.dd`/`.raw`) and loose image files. Image carving supports JPEG, PNG, BMP and GIF. Provenance analysis operates on metadata standards (C2PA, EXIF, XMP, generator signatures). The tool deliberately does **not** attempt pixel-level, machine-learning-based AI detection as its primary mechanism, because such models do not generalise reliably; an experimental classifier exists but is excluded from the forensic score. Full certificate-trust-list validation of C2PA signers is out of scope and identified as future work.
+ForenSight is a single-user desktop application for Windows. It processes raw disk images (`.dd`/`.raw`) and loose image files. Image carving supports JPEG, PNG, BMP and GIF. Provenance analysis operates on metadata standards (C2PA, EXIF, XMP, generator signatures). The tool deliberately uses **no machine learning of any kind**: black-box classifiers cannot be explained to a court and do not generalise reliably across new generative models, so every decision in ForenSight is rule-based and fully explainable by design. Error Level Analysis is offered as an optional visual aid for manual inspection and is deliberately excluded from the score. Full certificate-trust-list validation of C2PA signers is out of scope and identified as future work.
 
 ### 1.6 Significance
 

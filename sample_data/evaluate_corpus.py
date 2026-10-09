@@ -30,20 +30,16 @@ Definitions used for scoring (stated so they are defensible):
 """
 from __future__ import annotations
 
-import os
 import sys
 import warnings
 from pathlib import Path
 
-# Quieten TensorFlow's startup noise so the metrics output stays readable.
-os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
-os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from forensight import (config, exif_engine, jpeg_analyzer, recompression_analyzer,
                         thumbnail_engine, file_type_analyzer, provenance_analyzer,
-                        integrity_analyzer, ml_detector)
+                        integrity_analyzer)
 from forensight.integrity_analyzer import AnalysisBundle
 
 LABELS = ("real", "ai", "edited", "transferred")
@@ -51,7 +47,7 @@ _EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".gif"}
 
 
 # --------------------------------------------------------------------------
-# Per-image detection (mirrors analysis_service, incl. optional ML)
+# Per-image detection (mirrors analysis_service - rule-based only)
 # --------------------------------------------------------------------------
 def analyse(path: Path) -> dict:
     exif = exif_engine.extract_exif(path)
@@ -68,25 +64,20 @@ def analyse(path: Path) -> dict:
     if tc.available:
         bundle.thumbnail_mismatch = tc.mismatch
         bundle.thumbnail_difference = tc.difference
-    ml_prob = ml_detector.predict_ai_probability(path)   # None if unavailable
-    if ml_prob is not None:
-        bundle.ml_ai_probability = ml_prob
     a = integrity_analyzer.assess(bundle)
 
     software_flag = any("software" in i.lower() for i in exif.indicators)
-    ml_ai = ml_prob is not None and ml_prob >= config.ML_AI_THRESHOLD
     return {
         "score": a.score if a.score is not None else 0,
         "outcome": a.outcome,
         "flagged": (a.score or 0) >= config.SCORE_BAND_POTENTIAL,   # tool: not-clean
-        "pred_ai": bool(prov.ai_generated) or ml_ai,                # AI decision
+        "pred_ai": bool(prov.ai_generated),                         # AI decision (C2PA)
         # individual signals (for the ablation / baseline)
         "sig_provenance": bool(prov.detected),
         "sig_recompressed": bool(bundle.recompressed),
         "sig_thumb": bool(bundle.thumbnail_mismatch),
         "sig_filetype": ftype["result"] == file_type_analyzer.MISMATCH,
         "sig_software": software_flag,
-        "ml_prob": ml_prob,
         "generator": prov.generator or prov.editor,
     }
 
@@ -145,10 +136,8 @@ def main(folder: str = "eval_corpus"):
         print(f"Expected subfolders: {', '.join(LABELS)}")
         return
 
-    ml_on = ml_detector.available()
     print(f"ForenSight evaluation - corpus: {root.name}  "
-          f"({len(items)} images)   ML classifier: "
-          f"{'ON' if ml_on else 'off (rule-based only)'}\n")
+          f"({len(items)} images)   (rule-based, explainable)\n")
 
     results = []
     for path, label in items:
@@ -188,16 +177,8 @@ def main(folder: str = "eval_corpus"):
     has_ai = any(r["label"] == "ai" for r in results)
     if has_ai:
         print("TASK 1 - AI-generated detection (positive = truly AI):")
-        _print_metric("ForenSight (rule+ML)",
+        _print_metric("ForenSight (C2PA provenance)",
                       _prf((r["label"] == "ai", r["pred_ai"]) for r in results))
-        _print_metric("provenance only",
-                      _prf((r["label"] == "ai", r["sig_provenance"]) for r in results))
-        if ml_on:
-            _print_metric("ML classifier only",
-                          _prf((r["label"] == "ai",
-                                r["ml_prob"] is not None
-                                and r["ml_prob"] >= config.ML_AI_THRESHOLD)
-                               for r in results))
         print()
 
     # -- Task 2: manipulation detection + signal ablation -----------------
@@ -228,7 +209,7 @@ def main(folder: str = "eval_corpus"):
     out = root.parent / "eval_results.csv"
     cols_csv = ["file", "label", "score", "outcome", "flagged", "pred_ai",
                 "sig_provenance", "sig_recompressed", "sig_thumb",
-                "sig_filetype", "sig_software", "ml_prob", "generator"]
+                "sig_filetype", "sig_software", "generator"]
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(",".join(cols_csv) + "\n")
         for r in results:

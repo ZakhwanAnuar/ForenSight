@@ -58,8 +58,6 @@ class AnalysisBundle:
     # Embedded-thumbnail vs full-image consistency.
     thumbnail_mismatch: Optional[bool] = None
     thumbnail_difference: Optional[float] = None
-    # Optional ML pixel classifier: P(AI-generated), 0-1.
-    ml_ai_probability: Optional[float] = None
 
 
 @dataclass
@@ -212,13 +210,6 @@ def assess(bundle: AnalysisBundle) -> Assessment:
             indicators.append(
                 "[Fact] Content-provenance metadata (C2PA Content Credentials) "
                 "is present; no generative-source declaration found [+0].")
-
-    # ML pixel classifier: DISPLAY-ONLY, deliberately EXCLUDED from the score.
-    # The classifier is experimental and does not generalise reliably (it can
-    # confidently mislabel real or app-edited photos as AI), so it must not drive
-    # the forensic Integrity & Provenance Score or the classification band.  It
-    # is surfaced separately in the UI/report as experimental context only, and
-    # the score stays purely rule-based and explainable.
 
     score = min(score, 100)
 

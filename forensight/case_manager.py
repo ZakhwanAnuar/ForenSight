@@ -210,13 +210,18 @@ def open_case(case_path: str | Path) -> Case:
     case_data_dir = case_root / config.CASE_DATA_DIR
     cfg_path = case_data_dir / config.CONFIG_FILENAME
     db_path = case_data_dir / config.DB_FILENAME
+    # Fall back to the legacy filename so cases created by older builds still open.
+    if not db_path.exists():
+        legacy = case_data_dir / config.DB_FILENAME_LEGACY
+        if legacy.exists():
+            db_path = legacy
 
     if not case_data_dir.exists():
         raise CaseError(f"CaseData directory not found in:\n{case_root}")
     if not cfg_path.exists():
         raise CaseError("case_config.json is missing - not a valid ForenSight case.")
     if not db_path.exists():
-        raise CaseError("crime_lens_case.db is missing - case database not found.")
+        raise CaseError(f"{config.DB_FILENAME} is missing - case database not found.")
 
     config_data = _read_config(case_root)
     schema_version = config_data.get("schema_version")

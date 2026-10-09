@@ -1,10 +1,9 @@
 """Orchestrates per-image forensic analysis and persists the results.
 
 Runs EXIF, JPEG, recompression, thumbnail-consistency, file-type and provenance
-engines on one carved file, plus an optional pixel-based ML classifier, computes
-the combined integrity & provenance assessment and writes everything to the
-database and audit log.  Runnable off the GUI thread.  No ELA; the ML classifier
-is optional and degrades gracefully when TensorFlow / the model is absent.
+engines on one carved file, computes the combined integrity & provenance
+assessment and writes everything to the database and audit log.  Runnable off the
+GUI thread.  Analysis is entirely rule-based and explainable - no AI/ML.
 """
 from __future__ import annotations
 
@@ -58,7 +57,7 @@ def analyze_carved_image(case: Case, carved_id: int) -> ImageAnalysis:
             "file_type_match": 0, "thumbnail_path": None,
             "assessment": assessment.outcome,
             "manipulation_score": assessment.score, "provenance": None,
-            "ml_ai_probability": None, "analyzed_utc": utc_now_iso(),
+            "analyzed_utc": utc_now_iso(),
         })
         return ImageAnalysis(carved_id, bundle, assessment)
 
@@ -105,15 +104,6 @@ def analyze_carved_image(case: Case, carved_id: int) -> ImageAnalysis:
         bundle.thumbnail_mismatch = thumb_cmp.mismatch
         bundle.thumbnail_difference = thumb_cmp.difference
 
-    # -- ML pixel classifier: DISABLED in the app pipeline ----------------
-    # The classifier is experimental and unreliable (can mislabel real/edited
-    # photos as AI); it is excluded from the score and hidden from the UI/report,
-    # so running it here only wastes time loading TensorFlow.  It remains
-    # available for offline evaluation via sample_data/evaluate_corpus.py.  To
-    # re-enable in-app, restore: ml_ai = ml_detector.predict_ai_probability(path)
-    ml_ai = None
-    bundle.ml_ai_probability = ml_ai
-
     # -- content provenance (C2PA / AI-generation metadata) ---------------
     provenance = provenance_analyzer.analyze_provenance(path)
     bundle.provenance = provenance
@@ -153,7 +143,6 @@ def analyze_carved_image(case: Case, carved_id: int) -> ImageAnalysis:
             "assessment": assessment.outcome,
             "manipulation_score": assessment.score,
             "provenance": provenance.summary() or None,
-            "ml_ai_probability": ml_ai,
             "analyzed_utc": utc_now_iso(),
         }
     )

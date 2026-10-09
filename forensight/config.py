@@ -13,7 +13,8 @@ SCHEMA_VERSION = 1
 # Case workspace layout
 # ---------------------------------------------------------------------------
 CASE_DATA_DIR = "CaseData"
-DB_FILENAME = "crime_lens_case.db"
+DB_FILENAME = "forensight_case.db"
+DB_FILENAME_LEGACY = "crime_lens_case.db"   # older cases; opened for compatibility
 CONFIG_FILENAME = "case_config.json"
 
 WORKSPACE_DIRS = [
@@ -95,15 +96,6 @@ SCORE_AI_PROVENANCE = 60        # metadata declares AI-generated/edited (C2PA)
 # fails outright, is strong evidence of manipulation/forgery.
 SCORE_C2PA_TAMPERED = 60        # valid signature but asset edited after signing
 SCORE_C2PA_INVALID = 40         # C2PA signature cryptographically failed
-
-# Optional ML fallback (pixel-based AI-image classifier).  DISPLAY-ONLY: it is
-# experimental and deliberately EXCLUDED from the Integrity & Provenance Score,
-# because it does not generalise reliably and can mislabel real/edited photos as
-# AI.  The threshold below only governs how the experimental result is labelled
-# in the UI/report and the evaluation harness, never the forensic score.
-import os as _os
-ML_MODEL_PATH = _os.path.join(_os.path.dirname(__file__), "models", "ai_detector.keras")
-ML_AI_THRESHOLD = 0.85          # P(AI) >= this is shown as "likely AI" (experimental)
 
 # Band thresholds applied to the 0-100 score.  "Processing Detected" reports that
 # the image is a SOFTWARE-PROCESSED copy (not a camera original) - a true, high-

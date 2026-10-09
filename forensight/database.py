@@ -91,7 +91,6 @@ SCHEMA_STATEMENTS = [
         assessment TEXT,
         manipulation_score INTEGER,
         provenance TEXT,
-        ml_ai_probability REAL,
         analyzed_utc TEXT NOT NULL,
         FOREIGN KEY(carved_evidence_id) REFERENCES carved_evidence(id)
     );
@@ -146,10 +145,6 @@ class Database:
             if cols and "provenance" not in cols:
                 self.conn.execute(
                     "ALTER TABLE image_analysis ADD COLUMN provenance TEXT")
-                self.conn.commit()
-            if cols and "ml_ai_probability" not in cols:
-                self.conn.execute(
-                    "ALTER TABLE image_analysis ADD COLUMN ml_ai_probability REAL")
                 self.conn.commit()
             ccols = [r[1] for r in self.conn.execute(
                 "PRAGMA table_info(carved_evidence)")]
@@ -332,12 +327,12 @@ class Database:
                 (carved_evidence_id,
                  jpeg_quality_estimate, jpeg_quantization_summary, file_type_match,
                  thumbnail_path, assessment, manipulation_score, provenance,
-                 ml_ai_probability, analyzed_utc)
+                 analyzed_utc)
             VALUES (:carved_evidence_id,
                     :jpeg_quality_estimate,
                     :jpeg_quantization_summary, :file_type_match, :thumbnail_path,
                     :assessment, :manipulation_score, :provenance,
-                    :ml_ai_probability, :analyzed_utc)
+                    :analyzed_utc)
             """,
             data,
         )

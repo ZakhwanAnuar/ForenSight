@@ -7,7 +7,7 @@ from forensight.case_manager import CaseError
 
 def test_valid_case_creation(tmp_path):
     case = case_manager.create_case("My Case", "CL-1", "Ann", "EX1", "Org", tmp_path)
-    assert (case.root / "CaseData" / "crime_lens_case.db").exists()
+    assert (case.root / "CaseData" / "forensight_case.db").exists()
     assert (case.root / "CaseData" / "case_config.json").exists()
     info = case.db.get_case_info()
     assert info["case_name"] == "My Case"
@@ -48,6 +48,6 @@ def test_open_missing_database_raises(tmp_path):
     case = case_manager.create_case("NoDb", "CL-7", "Ann", "EX1", "Org", tmp_path)
     root = case.root
     case.close_db()
-    (root / "CaseData" / "crime_lens_case.db").unlink()
+    (root / "CaseData" / "forensight_case.db").unlink()
     with pytest.raises(CaseError):
         case_manager.open_case(root)

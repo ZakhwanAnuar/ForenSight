@@ -39,9 +39,9 @@ Do not reuse the same source image across classes if you can avoid it.
 
 ## What the numbers mean (for your report)
 
-- **Task 1 - AI detection:** how well provenance (and, separately, the ML model)
-  identify truly AI images. Expect strong precision when C2PA metadata is present,
-  and the honest generalisation gap on metadata-stripped images.
+- **Task 1 - AI detection:** how well C2PA content-provenance identifies truly
+  AI images. Expect strong precision when C2PA metadata is present, and the
+  honest boundary on metadata-stripped images (where no metadata remains to read).
 - **Task 2 - Manipulation detection:** how well the tool flags ai/edited images
   while leaving real/transferred alone. The **ablation** shows which signal
   carries the result.

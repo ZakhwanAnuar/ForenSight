@@ -29,9 +29,9 @@ Forensic reading of the outcome:
     attributable; anyone could have produced it.
 
 Dependencies (``cryptography`` + ``cbor2``) are OPTIONAL and imported lazily -
-like pytsk3/tensorflow elsewhere in ForenSight, the tool degrades gracefully:
-if they are absent, verification is skipped and the caller falls back to the
-string-based certificate inspection in ``provenance_analyzer``.
+like pytsk3 elsewhere in ForenSight, the tool degrades gracefully: if they are
+absent, verification is skipped and the caller falls back to the string-based
+certificate inspection in ``provenance_analyzer``.
 """
 from __future__ import annotations
 

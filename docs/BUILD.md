@@ -16,8 +16,8 @@ This turns ForenSight into a standalone Windows app that runs by double-clicking
 
 > **Build inside the virtual environment.** PyInstaller bundles whatever is
 > importable, so building in a clean venv (runtime deps only) keeps the app
-> small. The build config already excludes TensorFlow/Keras because ForenSight's
-> ML is disabled and excluded from the forensic score.
+> small. ForenSight uses no AI/ML at all; the build config defensively excludes
+> heavy stacks such as TensorFlow/Keras so they can never bloat the bundle.
 
 ## Build (one command)
 

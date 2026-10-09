@@ -164,14 +164,6 @@ def test_provenance_detects_editing_app(tmp_path):
     assert r.detected and not r.ai_generated and r.editor == "Meitu"
 
 
-def test_ml_detector_degrades_gracefully():
-    # Without TensorFlow (or model file), the ML fallback disables itself and
-    # returns None instead of crashing - ForenSight keeps working rule-based.
-    from forensight import ml_detector
-    r = ml_detector.predict_ai_probability("does_not_exist.jpg")
-    assert r is None or (isinstance(r, float) and 0.0 <= r <= 1.0)
-
-
 def test_exif_software_editor_is_flagged():
     # An EXIF "Software" tag naming an editor (e.g. Adobe Express) must be flagged
     # as an image-processing indicator - not silently reported as No Anomalies.
@@ -271,26 +263,13 @@ def test_editor_signature_detected_in_metadata(tmp_path):
     assert r.editor == "GIMP"
 
 
-def test_ml_ai_probability_never_affects_score():
-    # The ML classifier is experimental and DISPLAY-ONLY: a confident ML result
-    # must not contribute to the rule-based Integrity & Provenance Score, must not
-    # appear as a weighted indicator, and must not drive the classification band.
-    from forensight import jpeg_analyzer
-    bundle = AnalysisBundle(ml_ai_probability=0.99)
-    a = integrity_analyzer.assess(bundle)
-    assert a.score == 0
-    assert a.outcome == integrity_analyzer.INSUFFICIENT_DATA
-    assert not any("ML image classifier" in i for i in a.indicators)
-
-
-def test_ml_does_not_inflate_a_rule_based_score():
-    # A discriminative rule signal sets the score; the ML must add nothing to it.
+def test_filetype_mismatch_drives_score():
+    # A discriminative rule signal (file-type mismatch) sets the score and band.
     from forensight import config
     bundle = AnalysisBundle(
-        file_type={"result": "MISMATCH", "extension": ".jpg", "detected_type": "PDF"},
-        ml_ai_probability=1.0)
+        file_type={"result": "MISMATCH", "extension": ".jpg", "detected_type": "PDF"})
     a = integrity_analyzer.assess(bundle)
-    assert a.score == config.SCORE_FILETYPE_MISMATCH      # ML adds nothing
+    assert a.score == config.SCORE_FILETYPE_MISMATCH
     assert a.outcome == integrity_analyzer.STRONG_INDICATORS
 
 

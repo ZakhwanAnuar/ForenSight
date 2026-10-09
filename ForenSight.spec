@@ -19,8 +19,9 @@ for _mod in ("pytsk3", "cryptography", "cbor2", "PIL", "reportlab"):
     except Exception:
         pass  # optional (e.g. pytsk3) — the app degrades gracefully without it
 
-# Keep the build lean: ForenSight's ML is disabled and excluded from the score,
-# so TensorFlow/Keras (hundreds of MB) must NOT be bundled. Dev-only tooling is
+# Keep the build lean. ForenSight is entirely rule-based (no AI/ML), so heavy
+# scientific/ML stacks must never be bundled; these excludes are defensive in
+# case such a package is present in the build environment. Dev-only tooling is
 # excluded too.
 excludes = [
     "tensorflow", "keras", "tensorboard", "h5py",

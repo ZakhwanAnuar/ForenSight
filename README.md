@@ -8,22 +8,21 @@ forensics**, focused on **detecting AI-generated and edited images**. Given an
 acquired data source (a `dd`/`img`/`raw` disk image or VM disk file), it recovers
 embedded pictures — including **deleted** ones — by **signature-based carving**,
 validates and hashes each one, then runs a suite of **rule-based analyses** —
-**C2PA content-provenance / AI detection**, EXIF metadata, JPEG re-compression,
-embedded-thumbnail consistency and file-type verification — combined into an
-explainable **0–100 Integrity & Provenance Score**, with an **optional,
-experimental pixel-based ML classifier** as a secondary supporting signal.
-Everything happens inside a single traceable, reproducible, hash-verified case,
-ending in a signed PDF report. **No Error Level Analysis.** The primary signals
-are transparent and rule-based; the optional ML classifier is clearly labelled
-experimental and degrades gracefully when TensorFlow or the model file is absent.
+**C2PA content-provenance / AI detection with cryptographic signature
+verification**, EXIF metadata, JPEG re-compression, embedded-thumbnail
+consistency and file-type verification — combined into an explainable **0–100
+Integrity & Provenance Score**. Everything happens inside a single traceable,
+reproducible, hash-verified case, ending in a signed PDF report. **No AI/ML is
+used anywhere:** every analysis and every point of the score is a transparent,
+rule-based decision an examiner can inspect and defend. **Error Level Analysis
+(ELA)** is offered as an optional, clearly-labelled visual aid that is
+deliberately **excluded from the score**.
 
-> ForenSight is a **research prototype / final-year-project tool**, not a
-> certified replacement for Autopsy, FTK, EnCase or X-Ways. Its analysis outputs
-> are **indicators** that require examiner interpretation — they are not
-> independent proof that an image was manipulated. The **primary** detection is
-> transparent and rule-based; an **optional, experimental** pixel-based ML
-> classifier provides a secondary signal and is documented as such, not relied
-> upon as proof.
+> ForenSight is a **final-year-project tool**, not a certified replacement for
+> Autopsy, FTK, EnCase or X-Ways. Its analysis outputs are **indicators** that
+> require examiner interpretation — they are not independent proof that an image
+> was manipulated. Detection is entirely transparent and rule-based; there is no
+> black-box classifier anywhere in the tool.
 
 ---
 
@@ -244,7 +243,7 @@ ForenSight/
 
 ```
 <Case Name>/
-├── CaseData/     (case_config.json, crime_lens_case.db)
+├── CaseData/     (case_config.json, forensight_case.db)
 ├── Evidence/     (Original, Carved_JPEGs/PNGs/BMPs/GIFs, Suspicious)
 ├── Analysis/     (EXIF_Dumps, JPEG_Analysis, Thumbnails)
 ├── Reports/      (Drafts, Final)

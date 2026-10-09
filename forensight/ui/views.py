@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 from .. import config
 from ..carver import CarverWorker
 from ..carving_service import persist_carved_file
-from .. import analysis_service, evidence_manager, integrity_analyzer
+from .. import analysis_service, evidence_manager, integrity_analyzer, ela
 from ..stats import gather_stats
 from ..utils import human_size, utc_now_iso
 from ..audit_manager import verify_audit_chain
@@ -321,8 +321,17 @@ class EvidenceView(QWidget):
         self.tab_preview = ImageView("Recovered Image")
         split.addWidget(self.tab_preview)
 
-        # Right: switchable detail tabs.
+        # Right: switchable detail tabs. Integrity & Provenance leads, as it is
+        # the primary forensic verdict for the selected file.
         tabs = QTabWidget()
+
+        self.tab_assessment = QLabel("Not analysed.")
+        self.tab_assessment.setWordWrap(True)
+        self.tab_assessment.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.tab_assessment.setContentsMargins(10, 10, 10, 10)
+        as_scroll = QScrollArea(); as_scroll.setWidgetResizable(True)
+        as_scroll.setWidget(self.tab_assessment)
+        tabs.addTab(as_scroll, "Integrity & Provenance")
 
         self.tab_meta = QLabel("Select a file to view its metadata.")
         self.tab_meta.setWordWrap(True)
@@ -339,14 +348,6 @@ class EvidenceView(QWidget):
         self.tab_exif.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch)
         tabs.addTab(self.tab_exif, "EXIF")
-
-        self.tab_assessment = QLabel("Not analysed.")
-        self.tab_assessment.setWordWrap(True)
-        self.tab_assessment.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.tab_assessment.setContentsMargins(10, 10, 10, 10)
-        as_scroll = QScrollArea(); as_scroll.setWidgetResizable(True)
-        as_scroll.setWidget(self.tab_assessment)
-        tabs.addTab(as_scroll, "Integrity & Provenance")
 
         self.tab_hex = QPlainTextEdit(); self.tab_hex.setReadOnly(True)
         self.tab_hex.setFont(QFont("Consolas", 9))
@@ -685,17 +686,12 @@ class EvidenceView(QWidget):
                 prov_html = f"<b>Content Provenance:</b> {prov}<br>"
             else:
                 prov_html = "<b>Content Provenance:</b> None detected<br>"
-            # ML classifier display hidden: experimental and unreliable (can
-            # mislabel real/edited photos as AI) and excluded from the score.
-            # Re-enable when a better-generalising model is trained.
-            ml_html = ""
             score = analysis["manipulation_score"]
             self.tab_assessment.setText(
                 f"<h3>Assessment: {status_html(label, kind)}</h3>"
                 f"<b>Integrity &amp; Provenance Score:</b> "
                 f"{score if score is not None else 'N/A'}/100<br>"
                 f"{prov_html}"
-                f"{ml_html}"
                 f"<b>JPEG Quality:</b> {analysis['jpeg_quality_estimate']}<br>"
                 f"<b>JPEG Analysis:</b> {analysis['jpeg_quantization_summary'] or 'N/A'}<br>"
                 f"<b>File-Type:</b> {ftype}<br>"
@@ -1095,6 +1091,120 @@ class CarvingDialog(QDialog):
 # ===========================================================================
 # TIMELINE
 # ===========================================================================
+class ELAView(QWidget):
+    """Full-page Error Level Analysis comparison (NON-SCORING visual aid).
+
+    Left: every recovered image, tinted by its triage assessment (green/amber/
+    red).  Right: the selected image shown side by side with its ELA heatmap.
+    ELA never contributes to the forensic score; this page is an investigator
+    aid only, and the caveat is shown alongside every comparison.
+    """
+
+    _ASSESS_COLOR = {
+        "NO_SIGNIFICANT_ANOMALIES": OK,
+        "POTENTIAL_MANIPULATION": WARN,
+        "STRONG_INDICATORS": DANGER,
+    }
+
+    def __init__(self, controller):
+        super().__init__()
+        self.controller = controller
+        self._rows = []
+        self._ela_cache = {}          # path -> (png_bytes_or_None, hint_text)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(20, 20, 20, 20)
+        outer.setSpacing(8)
+        outer.addWidget(h1("Error Level Analysis — Comparison"))
+        outer.addWidget(muted(
+            "Non-scoring visual aid. Select a recovered image to compare it "
+            "with its ELA heatmap. ELA is excluded from the forensic score."))
+
+        split = QSplitter(Qt.Orientation.Horizontal)
+
+        # Left: colour-coded file list.
+        self.list = QListWidget()
+        self.list.itemSelectionChanged.connect(self._on_pick)
+        split.addWidget(self.list)
+
+        # Right: original vs ELA, side by side, with hint + caveat below.
+        right = QWidget()
+        rl = QVBoxLayout(right)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(6)
+        compare = QSplitter(Qt.Orientation.Horizontal)
+        self.orig_view = ImageView("Recovered Image")
+        self.heat_view = ImageView("ELA Heatmap")
+        compare.addWidget(self.orig_view)
+        compare.addWidget(self.heat_view)
+        compare.setSizes([440, 440])
+        rl.addWidget(compare, 1)
+        self.hint = QLabel("")
+        self.hint.setObjectName("Muted")
+        self.hint.setWordWrap(True)
+        rl.addWidget(self.hint, 0)
+        caveat = QLabel(ela.CAVEAT)
+        caveat.setWordWrap(True)
+        caveat.setStyleSheet(
+            "background:#FBF6E9; border:1px solid #E0C97A; border-radius:4px; "
+            "padding:6px 8px; color:#6E5A17; font-size:11px;")
+        rl.addWidget(caveat, 0)
+        split.addWidget(right)
+
+        split.setStretchFactor(0, 0)
+        split.setStretchFactor(1, 1)
+        split.setSizes([300, 820])
+        outer.addWidget(split, 1)
+
+    def refresh(self):
+        case = self.controller.case
+        self.list.clear()
+        self.orig_view.clear()
+        self.heat_view.clear()
+        self.hint.setText("")
+        self._ela_cache.clear()
+        if case is None:
+            return
+        self._rows = case.db.query_all(
+            """
+            SELECT c.id, c.file_name, c.file_path, a.assessment AS assessment
+              FROM carved_evidence c
+              LEFT JOIN image_analysis a ON a.carved_evidence_id = c.id
+             ORDER BY c.id
+            """, [])
+        for r in self._rows:
+            item = QListWidgetItem(r["file_name"])
+            color = self._ASSESS_COLOR.get(r["assessment"])
+            if color:
+                item.setForeground(QBrush(QColor(color)))
+            item.setData(Qt.ItemDataRole.UserRole, r["file_path"])
+            self.list.addItem(item)
+        if self.list.count():
+            self.list.setCurrentRow(0)
+
+    def _on_pick(self):
+        items = self.list.selectedItems()
+        if not items:
+            return
+        path = items[0].data(Qt.ItemDataRole.UserRole)
+        self.orig_view.set_image(path)
+        # Cached result -> instant on revisit; otherwise compute once (heatmap +
+        # hint in a single pass) on the downscaled image.
+        if path in self._ela_cache:
+            png, hint_text = self._ela_cache[path]
+        else:
+            self.hint.setText("Computing ELA...")
+            QApplication.processEvents()
+            png, hint_text = ela.analyze(path)
+            self._ela_cache[path] = (png, hint_text)
+        if png:
+            self.heat_view.set_image_bytes(png)
+            self.hint.setText(hint_text)
+        else:
+            self.heat_view.clear()
+            self.hint.setText("ELA could not be computed for this file "
+                              "(unsupported or unreadable image).")
+
+
 class TimelineView(QWidget):
     """Chronological case audit / investigation timeline (spec section 41)."""
 

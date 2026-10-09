@@ -16,11 +16,6 @@ pytsk3>=20230125
 cryptography>=42.0   # X.509 parsing, ECDSA/RSA/Ed25519 signature verification
 cbor2>=5.6           # COSE / JUMBF CBOR decoding
 
-# Optional - ML fallback: pixel-based AI-image classifier (a fine-tuned Keras
-# model at forensight/models/ai_detector.keras).  Without it, ForenSight runs
-# fully on its rule-based signals and the ML result is simply not shown.
-tensorflow>=2.15
-
 # Optional - used only by the sample-data generators (not needed to run the app)
 piexif>=1.1.3        # inject EXIF software/GPS tags into the carving sample
 pyfatfs>=1.1.0       # build the FAT sample images (make_evidence_disk*.py)
